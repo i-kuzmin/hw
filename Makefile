@@ -15,5 +15,5 @@ all: $(PROGRAM)
 run: $(PROGRAM)
 	./$^ plane 
 
-.DEFAULT_GOAL := run
+.DEFAULT_GOAL := $(PROGRAM)
 

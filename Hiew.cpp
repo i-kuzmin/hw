@@ -39,6 +39,40 @@ const char * const Hiew::m_trans [] = {
     u8"°",  u8"∙",  u8"·",  u8"√",  u8"№",  u8"¤",  u8"■",  u8" "
 };
 
+class Hiew::LineMerger {
+public:
+    LineMerger( Hiew& outer)
+      : _(outer), m_collapsed(0)
+    {}
+
+    bool skip( const std::vector<char>& line) {
+        if ( !_.m_mergeLines) return false;
+
+        if ( line == m_lastLine) {
+            m_collapsed++;
+            return true /*skip line*/;
+
+        } else {
+            if ( m_collapsed > 0) {
+                _.m_out << "* "
+                    << std::setw(6) << std::hex << std::setfill(' ')
+                    << m_collapsed << "   ";
+                m_collapsed = 0;
+
+                for (int i = 0; i < line.size(); ++i) { _.m_out << "-- "; }
+                _.m_out << std::endl;
+            }
+            m_lastLine = line;
+        }
+        return false;
+    }
+
+private:
+    Hiew& _;
+    std::vector<char> m_lastLine;
+    size_t m_collapsed;
+};
+
 void Hiew::hex( std::istream& in)
 {
     using std::hex;
@@ -48,10 +82,16 @@ void Hiew::hex( std::istream& in)
     using std::endl;
 
     std::vector<char> line(m_width);
+    std::vector<char> pLine;
 
     size_t offset = 0;
+    size_t collapsed = 0;
+
+    LineMerger merger( *this);
 
     while ( in.read(line.data(), line.size()) || in.gcount()) {
+        if ( merger.skip( line)) continue;
+
         size_t n = in.gcount();
         // hexadecimal output
         m_out << hex << setfill('0') << setw(8) << offset << ":  ";
