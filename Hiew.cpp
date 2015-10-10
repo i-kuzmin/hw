@@ -1,4 +1,5 @@
 #include "Hiew.h"
+    iool m_mergeLines;
 
 #include <iomanip>
 #include <cstdint>

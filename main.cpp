@@ -18,6 +18,31 @@ int usage( int argc, char* argv[], int invArg ) {
     return 0;
 }
 
+bool int_arg( int argc, char* argv[], int& i, const std::string& name, int & intVal)
+{
+    std::string arg(argv[i]);
+
+    if ( arg.compare( 0, name.length(), name) != 0) { return false; }
+
+    std::string val;
+
+    if ( arg.length() > name.length()) {
+        val = arg.substr( name.length());
+
+    } else if ( ++i < argc) {
+        val = argv[i];
+
+    } else {
+        std::exit( usage( argc, argv, i));
+    }
+
+    intVal = 0;
+    std::istringstream iss(val);
+    iss >> intVal;
+
+    return true;
+}
+
 int main(int argc, char* argv[]) {
     Hiew hiew;
     Options opt;
@@ -51,24 +76,25 @@ int main(int argc, char* argv[]) {
             hiew.line_feed(Hiew::CRLF);
         }
 
-        if ( arg.compare( 0, 2, "-w") == 0) {
-            std::string val;
-            if (arg.length() > 2) {
-                val = arg.substr(2);
-            } else if ( ++i < argc) {
-                val = argv[i];
-            }
-            int width = 0;
-            std::istringstream iss(val);
-            iss >> width;
+        if ( arg == "-v") {
+            hiew.merge_lines( false);
+        }
 
-            if ( width > 0) {
-                hiew.width( width);
-                continue;
-            } return usage(argc, argv, i);
+        int val;
+        if ( int_arg( argc, argv, i, "-w", val)) {
+            hiew.width( val);
+        }
+
+        if ( int_arg( argc, argv, i, "-s", val)) {
+            opt.skip(val);
+        }
+
+        if ( int_arg( argc, argv, i, "-n", val)) {
+            hiew.max_len( val);
         }
 
         std::ifstream in( argv[i], std::ios::binary);
+        in.ignore( opt.skip());
         switch ( opt.mode()) {
             case Options::TEXT:
                 hiew.text( in);
