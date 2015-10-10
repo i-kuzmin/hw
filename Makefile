@@ -13,7 +13,7 @@ all: $(PROGRAM)
 .PHONY: run all
 
 run: $(PROGRAM)
-	./$^ plane 
+	./$^ test.bin
 
 .DEFAULT_GOAL := $(PROGRAM)
 

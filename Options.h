@@ -15,8 +15,8 @@ public:
     Mode mode() const { return m_mode; }
     void mode(Mode m) { m_mode = m; }
 
-    int length() const { return m_length; }
-    void length( int l) { m_length = l; }
+    //int length() const { return m_length; }
+    //void length( int l) { m_length = l; }
 
     int skip() const { return m_skip; }
     void skip( int s) { m_skip = s; }
