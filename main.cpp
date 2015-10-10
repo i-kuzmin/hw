@@ -1,19 +1,9 @@
 #include "Hiew.h"
+#include "Options.h"
+
 #include <sstream>
 #include <iostream>
 
-
-struct Options {
-    enum Mode { TEXT, HEX };
-public:
-    Options() : m_mode(HEX) {}
-
-    Mode mode() const { return m_mode; }
-    void mode(Mode m) { m_mode = m; }
-
-private:
-    Mode m_mode;
-};
 
 int usage( int argc, char* argv[], int invArg ) {
     //TODO: print help message
@@ -31,6 +21,7 @@ int usage( int argc, char* argv[], int invArg ) {
 int main(int argc, char* argv[]) {
     Hiew hiew;
     Options opt;
+    hiew.width( opt.width());
 
     for ( int i = 1; i < argc; ++i) {
         std::string arg( argv[i]);
