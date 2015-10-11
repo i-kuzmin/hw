@@ -1,19 +1,39 @@
 
 SRC = $(wildcard *.cpp)
+HDR = $(wildcard *.h)
+
 PROGRAM = hw
-CXX=clang++ -g
-LDFLAGS+=
-#-stdlib=libc++ 
-$(PROGRAM): $(SRC)
-	$(CXX) -o $@ -std=c++11 -lstdc++ $^
+
+CXX=clang++ -c
+CXXFLAGS+=-std=c++11 -g
+
+LD=clang++
+LDFLAGS+=-lstdc++
+
+LIBS =-lboost_regex
+OBJS = $(SRC:%.cpp=%.o)
+DEPS = $(SRC:%.cpp=%.dep)
+
+%.dep: %.cpp
+	$(CXX) $(CXXFLAGS) $< -M -o $@
+
+$(foreach i, $(SRC), $(eval -include $(i:%.cpp=%.dep)))
+
+$(PROGRAM): $(OBJS)
+	$(LD) $(LDDFLAGS) -o $@ $(LIBS) $^
 
 all: $(PROGRAM) 
 
-.SUFFIXES:
-.PHONY: run all
+clean:
+	rm $(OBJS) $(PROGRAM) $(DEPS)
+
+.SUFFIXES: .o .cpp .cpp .dep
+.PHONY: run all clean compile
+
+compile: $(OBJS)
 
 run: $(PROGRAM)
-	./$^ test.bin
+	./$^ /00ff test.bin
 
 .DEFAULT_GOAL := $(PROGRAM)
 
