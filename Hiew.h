@@ -5,7 +5,10 @@
 #include <iostream>
 
 class Hiew {
+    class ReMatcher;
     class LineMerger;
+    class InputReader;
+    class Marker;
 
 public:
     enum LineFeed { LF, CR, CRLF, NLL };
@@ -31,6 +34,11 @@ public:
     void width( size_t w) { m_width = ( w ? w : WIDTH); }
 
     /**
+     * Highlight matched strings (in hex mode) 
+     */
+    void pattern( const std::string& re) { m_pattern = re; }
+
+    /**
      * Merge the same lines in hex mode output
      * @default true
      */
@@ -54,6 +62,7 @@ private:
     size_t m_width;
     size_t m_maxLen;
     bool m_mergeLines;
+    std::string m_pattern;
 };
 
 #endif

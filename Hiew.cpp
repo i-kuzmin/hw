@@ -1,4 +1,5 @@
 #include "Hiew.h"
+#include "Re.h"
 
 #include <iomanip>
 #include <cstdint>
@@ -39,13 +40,15 @@ const char * const Hiew::m_trans [] = {
     u8"°",  u8"∙",  u8"·",  u8"√",  u8"№",  u8"¤",  u8"■",  u8" "
 };
 
+typedef std::vector<char> line_buffer_t;
+
 class Hiew::LineMerger {
 public:
     LineMerger( Hiew& outer)
       : _(outer), m_collapsed(0)
-    {}
+    { }
 
-    bool skip( const std::vector<char>& line) {
+    bool skip( const line_buffer_t & line) {
         if ( !_.m_mergeLines) return false;
 
         if ( line == m_lastLine) {
@@ -69,9 +72,142 @@ public:
 
 private:
     Hiew& _;
-    std::vector<char> m_lastLine;
+    line_buffer_t m_lastLine;
     size_t m_collapsed;
 };
+
+struct InputObserver {
+    virtual void handle_line( const line_buffer_t&) = 0;
+};
+
+class Hiew::InputReader {
+public:
+    typedef std::shared_ptr<char> line_t;
+    //typedef std::pair<buffer_t, size_t> line_t;
+
+private:
+    typedef std::deque<line_buffer_t> cache_t;
+
+public:
+    InputReader( Hiew& outer, std::istream & in)
+        : _(outer), m_input( in), m_observer(nullptr)
+    {}
+
+    /**
+     * Retrieve next line ( either from cache or from stream)
+     * @arg line - pointer to valid stream
+     * @return - read line size
+     */
+    size_t next_line( line_buffer_t& line) {
+        if (m_cache.empty()) return read_line( line);
+
+        line = m_cache.front();
+        m_cache.pop_front();
+        return line.size();
+    }
+
+    /**
+     * Read line from stream and store it in cache.
+     * @arg out - return valid line buffer
+     * @return - data size
+     */
+    void cache_line() {
+        line_buffer_t line;
+        if ( size_t n = read_line( line)) {
+            m_cache.push_back( std::move(line));
+        }
+    }
+
+    /**
+     * Notify about each new read line.
+     */
+    void observer( InputObserver & observer) {
+        m_observer = &observer;
+    }
+
+private:
+    /**
+     * Read data from stream
+     * @arg line - output buffer
+     * @arg len - output buffer length
+     * @return - number of read bytes
+     */
+    size_t read_line( line_buffer_t& line) {
+        line.resize(_.m_width);
+        if ( m_input.read( line.data(), line.size()) || m_input.gcount()) {
+            size_t n = m_input.gcount();
+            line.resize(n);
+            if ( m_observer) { m_observer->handle_line( line); }
+            return n;
+        }
+        return 0;
+    }
+
+private:
+    Hiew & _;
+    cache_t m_cache;
+    std::istream& m_input;
+    InputObserver* m_observer;
+};
+
+class Hiew::ReMatcher : public InputObserver {
+public:
+    ReMatcher(Hiew& outer, InputReader & reader)
+      : _(outer), m_re( _.m_pattern), m_input(reader), m_offset(0)
+    { }
+
+    bool match_at( size_t offset) {
+        return false;
+    }
+
+private:
+    virtual void handle_line( const line_buffer_t& line) {
+        m_offset += line.size();
+        if ( m_re.partial_match( line.data(), line.size(), m_matched)) {
+            //m_re.chaced_len() > _.m_width
+            //m_input.chace_line();
+        }
+    }
+
+
+private:
+    Hiew& _;
+    Re m_re;
+    Re::MatchList m_matched;
+    InputReader& m_input;
+    size_t m_offset;
+};
+
+
+struct Hiew::Marker {
+    Marker( Hiew& outer): _(outer) {}
+    struct Style {
+        Style( Hiew& outer, bool isOutline)
+         :_(outer), m_isOutline( isOutline)
+        {}
+
+        Hiew & _;
+        bool m_isOutline;
+    };
+public:
+     Style style( bool isOutline) {
+         return Style(_, isOutline);
+     }
+
+     std::ostream& begin( std::ostream & strm) {
+
+         strm << "seq["
+     }
+
+private:
+    Hiew & _;
+};
+
+std::ostream& operator<<(std::ostream& strm, Style& style)
+{
+    Marker( strm, style);
+    return style.begin( strm);
+}
 
 void Hiew::hex( std::istream& in)
 {
@@ -81,42 +217,47 @@ void Hiew::hex( std::istream& in)
     using std::setw;
     using std::endl;
 
-    std::vector<char> line(m_width);
-    std::vector<char> pLine;
 
-    size_t offset = 0;
-    size_t collapsed = 0;
 
-    LineMerger merger( *this);
+    LineMerger  merger( *this);
+    InputReader reader( *this, in);
+    ReMatcher  matcher( *this, reader);
+    Marker      marker( *this);
 
-    while ( in.read(line.data(), line.size()) || in.gcount()) {
-        if ( merger.skip( line)) continue;
+    reader.observer( matcher);
 
-        size_t n = in.gcount();
+    InputReader::line_t linePtr;
+
+    line_buffer_t lineBuf;
+    for ( size_t offset = 0;
+          reader.next_line( lineBuf); offset += lineBuf.size())
+    {
+
+        if ( merger.skip( lineBuf)) continue;
+
         // hexadecimal output
         m_out << hex << setfill('0') << setw(8) << offset << ":  ";
-        for (int i = 0; i < line.size(); ++i) {
-            if ( i < n) {
-                uint8_t c = line[i];
-                m_out << setw(2) << setfill('0') << hex << uppercase
-                      << (int) c;
-
+        for (int i = 0; i < lineBuf.size(); ++i) {
+            if ( i < m_width) {
+                bool highlight = matcher.match_at( offset + i);
+                uint8_t c = lineBuf[i];
+                m_out << setw(2) << setfill('0') << hex << uppercase;
+                      << market.outline( highlight) << (int) c;
             } else {
                 m_out << "  ";
             }
 
-            if      ( i == line.size() - 1) m_out << "  ";
+            if      ( i == lineBuf.size() - 1) m_out << "  ";
             else if ( i % 4 == 3)           m_out << '-';
             else                            m_out << ' ';
         }
 
         // characters output
-        for (int i = 0; i < n; ++i) {
-            uint8_t c = line[i];
+        for (int i = 0; i <lineBuf.size(); ++i) {
+            uint8_t c = lineBuf[i];
             m_out << m_trans[ c];
         }
         m_out << endl;
-        offset += n;
     }
 }
 

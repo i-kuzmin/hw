@@ -28,12 +28,12 @@ clean:
 	rm $(OBJS) $(PROGRAM) $(DEPS)
 
 .SUFFIXES: .o .cpp .cpp .dep
-.PHONY: run all clean compile
+.PHONY: run all clean compile gdb
 
 compile: $(OBJS)
 
 run: $(PROGRAM)
-	./$^ /00ff test.bin
+	./$^ '/(\w)0.+\12' test.bin
 
 .DEFAULT_GOAL := $(PROGRAM)
 
